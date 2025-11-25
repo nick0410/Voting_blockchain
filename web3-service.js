@@ -188,29 +188,40 @@ class Web3Service {
    * Submit a vote commitment with Merkle proof
    * @param {string} candidateId - ID of candidate to vote for
    * @param {string} secret - Random secret (salt) for commit-reveal
+   * @param {array} merkleProof - Merkle proof for the voter address
    */
-  async commitVote(candidateId, secret) {
+  async commitVote(candidateId, secret, merkleProof = []) {
     if (!this.contract) throw new Error("Contract not initialized");
-    
+
     try {
       // Hash: keccak256(candidateId + secret)
       const commitment = ethers.solidityPackedKeccak256(
         ["uint", "string"],
         [candidateId, secret]
       );
-      
-      // For now, use empty proof - in production would need Merkle tree proof
-      const emptyProof = [];
-      
-      const tx = await this.contract.commitVote(commitment, emptyProof);
+
+      // Use provided proof or empty array if not available
+      const proof = merkleProof || [];
+
+      const tx = await this.contract.commitVote(commitment, proof);
       const receipt = await tx.wait();
-      
+
       console.log("✓ Vote committed:", { txHash: receipt.hash, commitment });
       return { txHash: receipt.hash, commitment, secret };
     } catch (err) {
       console.error("Error committing vote:", err.message);
       throw err;
     }
+  }
+
+  /**
+   * Get Merkle proof for an address
+   * @param {string} address - Wallet address
+   * @returns {array} Merkle proof
+   */
+  getMerkleProofForAddress(address) {
+    // This will be populated from deployment info
+    return [];
   }
 
   /**
@@ -225,7 +236,7 @@ class Web3Service {
       const tx = await this.contract.revealVote(candidateId, secret);
       const receipt = await tx.wait();
       
-      console.log("�� Vote revealed:", { txHash: receipt.hash, candidateId });
+      console.log("✓ Vote revealed:", { txHash: receipt.hash, candidateId });
       return receipt.hash;
     } catch (err) {
       console.error("Error revealing vote:", err.message);
