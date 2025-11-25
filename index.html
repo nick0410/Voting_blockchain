@@ -868,6 +868,9 @@
       document.getElementById('votingSection').style.display = 'block';
 
       addLog(`✓ User registered: ${fullName} - Added to voters list (${votersList.length} total)`);
+
+      // Reload voters list display
+      setTimeout(() => loadVoters(), 500);
     }
 
     async function connectWallet() {
