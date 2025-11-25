@@ -1262,6 +1262,9 @@
         };
       }
 
+      // Load voters list on page load
+      loadVoters();
+
       if (Web3Service.isMetaMaskInstalled()) {
         web3Service.onAccountChange((address) => {
           document.getElementById('walletAddress').textContent = address;
