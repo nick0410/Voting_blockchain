@@ -905,38 +905,55 @@
 
     async function initializeWeb3() {
       try {
-        const btn = event.target;
-        btn.disabled = true;
-        btn.innerHTML = '<div class="spinner"></div> Initializing...';
+        const btn = document.getElementById('initContractBtn');
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<div class="spinner"></div> Initializing...';
+        }
 
         if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
           throw new Error('Contract address not found. Please deploy the contract first.');
         }
 
-        await web3Service.init(RPC_URL, CONTRACT_ADDRESS, VOTING_ABI, false);
-        
+        if (!web3Service.isConnected) {
+          // Initialize using MetaMask provider
+          await web3Service.init(RPC_URL, CONTRACT_ADDRESS, VOTING_ABI, true);
+        }
+
         document.getElementById("connectionStatus").className = "status connected";
         document.getElementById("connectionStatus").textContent = "Connected";
 
-        await refreshContractDetails();
-        await loadCandidates();
-        await loadResults();
-        await refreshStats();
-        
-        web3Service.listenToEvents();
-        setupEventListeners();
+        try {
+          await refreshContractDetails();
+          await loadCandidates();
+          await loadResults();
+          await refreshStats();
 
-        btn.textContent = "✓ Initialized";
-        setTimeout(() => {
+          web3Service.listenToEvents();
+          setupEventListeners();
+
+          showSuccess('Contract initialized successfully!');
+          addLog("✓ Contract initialized successfully");
+        } catch (contractErr) {
+          console.error("Contract call error:", contractErr);
+          addLog("⚠ Web3 connected but contract calls may need adjustment");
+        }
+
+        if (btn) {
+          btn.textContent = "✓ Initialized";
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = "Initialize Contract";
+          }, 2000);
+        }
+      } catch (err) {
+        console.error("Initialization error:", err);
+        showError(err.message);
+        const btn = document.getElementById('initContractBtn');
+        if (btn) {
           btn.disabled = false;
           btn.textContent = "Initialize Contract";
-        }, 2000);
-
-        addLog("Contract initialized successfully");
-      } catch (err) {
-        showError(err.message);
-        event.target.disabled = false;
-        event.target.textContent = "Initialize Contract";
+        }
       }
     }
 
