@@ -1068,10 +1068,21 @@
 
         // Get Merkle proof for current address
         const currentAddress = web3Service.walletAddress;
-        const merkleProof = deploymentData?.voterProofs?.[currentAddress] || [];
+        let merkleProof = deploymentData?.voterProofs?.[currentAddress] ||
+                          deploymentData?.voterProofs?.[currentAddress.toLowerCase()] ||
+                          deploymentData?.voterProofs?.[currentAddress.toUpperCase()] || [];
+
+        // Try to find proof with different address formats
+        if (merkleProof.length === 0 && deploymentData?.voterProofs) {
+          const keys = Object.keys(deploymentData.voterProofs);
+          const matchingKey = keys.find(k => k.toLowerCase() === currentAddress.toLowerCase());
+          if (matchingKey) {
+            merkleProof = deploymentData.voterProofs[matchingKey];
+          }
+        }
 
         if (merkleProof.length === 0) {
-          showError("Your address is not whitelisted. Contact the voting administrator.");
+          showError(`Your address (${currentAddress}) is not whitelisted. Available voters: ${Object.keys(deploymentData?.voterProofs || {}).length}`);
           btn.disabled = false;
           btn.textContent = "Step 1: Commit";
           return;
