@@ -15,6 +15,21 @@ const server = http.createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
+  // Handle directory listing for deployments
+  if (req.url === "/deployments/") {
+    const deploymentsDir = path.join(__dirname, "deployments");
+    fs.readdir(deploymentsDir, (err, files) => {
+      if (err) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Deployments directory not found" }));
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ files }));
+    });
+    return;
+  }
+
   // Serve files
   let filePath = path.join(__dirname, req.url === "/" ? "index.html" : req.url);
 
@@ -40,7 +55,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`\n╔════════════════════════════════════════════════════════╗`);
   console.log(`║        Voting System Frontend Server                   ║`);
-  console.log(`╚════════════════════════════════════════════════════════╝\n`);
+  console.log(`���════════════════════════════════════════════════════════╝\n`);
   console.log(`✓ Server running at http://localhost:${PORT}`);
   console.log(`✓ Open http://localhost:${PORT} in your browser`);
   console.log(`✓ Make sure Hardhat node is running: npm run node\n`);
