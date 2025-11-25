@@ -1142,30 +1142,38 @@
     }
 
     window.addEventListener("load", async () => {
+      // Check if user is already registered
+      const savedRegistration = localStorage.getItem('userRegistration');
+      if (savedRegistration) {
+        userRegistered = true;
+        const userData = JSON.parse(savedRegistration);
+        document.getElementById('registrationSection').style.display = 'none';
+        document.getElementById('votingSection').style.display = 'block';
+        addLog(`✓ Welcome back, ${userData.fullName}!`);
+      }
+
       try {
-        const response = await fetch("/deployments/deployment-localhost-latest.json");
-        if (!response.ok) {
-          const files = await fetch("/deployments/").then(r => r.text());
-          const match = files.match(/deployment-localhost-\d+\.json/);
-          if (match) {
-            const response = await fetch("/deployments/" + match[0]);
-            if (response.ok) {
-              const deployment = await response.json();
-              CONTRACT_ADDRESS = deployment.contractAddress;
-              localStorage.setItem("votingContractAddress", deployment.contractAddress);
-            }
-          }
+        // Load deployment data with Merkle proofs
+        const response = await fetch("/deployments/deployment-localhost-1764097615123.json");
+        if (response.ok) {
+          deploymentData = await response.json();
+          CONTRACT_ADDRESS = deploymentData.contractAddress;
+          localStorage.setItem("votingContractAddress", CONTRACT_ADDRESS);
+          console.log("✓ Deployment data loaded", deploymentData);
         } else {
-          const deployment = await response.json();
-          CONTRACT_ADDRESS = deployment.contractAddress;
-          localStorage.setItem("votingContractAddress", deployment.contractAddress);
+          throw new Error("Deployment file not found");
         }
       } catch (err) {
-        console.log("Deployment file loading...");
+        console.log("⚠ Using hardcoded contract address");
         if (!CONTRACT_ADDRESS) {
           CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
           localStorage.setItem("votingContractAddress", CONTRACT_ADDRESS);
         }
+        // Create minimal deployment data
+        deploymentData = {
+          contractAddress: CONTRACT_ADDRESS,
+          voterProofs: {},
+        };
       }
 
       if (Web3Service.isMetaMaskInstalled()) {
