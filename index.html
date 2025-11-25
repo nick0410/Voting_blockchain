@@ -609,13 +609,44 @@
       <p>Secure, transparent, decentralized voting on Ethereum</p>
     </header>
 
-    <div class="wallet-section">
-      <button class="wallet-button" id="connectWalletBtn" onclick="connectWallet()">
-        <span>🦊</span>
-        <span id="walletBtnText">Connect MetaMask</span>
-      </button>
-      <div class="wallet-info" id="walletInfo" style="display: none">
-        Connected: <span class="wallet-address" id="walletAddress"></span>
+    <div id="registrationSection" class="registration-section">
+      <div class="card registration-card">
+        <h2>📝 User Registration</h2>
+        <form id="registrationForm" class="vote-form" onsubmit="handleRegistration(event)">
+          <div>
+            <label for="regEmail">Email Address:</label>
+            <input type="email" id="regEmail" placeholder="your@email.com" required />
+          </div>
+
+          <div>
+            <label for="regPassword">Password:</label>
+            <input type="password" id="regPassword" placeholder="Enter a strong password" required />
+          </div>
+
+          <div>
+            <label for="regConfirm">Confirm Password:</label>
+            <input type="password" id="regConfirm" placeholder="Confirm your password" required />
+          </div>
+
+          <div>
+            <label for="regFullName">Full Name:</label>
+            <input type="text" id="regFullName" placeholder="Your full name" required />
+          </div>
+
+          <button type="submit" class="btn success">Register Account</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="votingSection" style="display: none">
+      <div class="wallet-section">
+        <button class="wallet-button" id="connectWalletBtn" onclick="connectWallet()">
+          <span>🦊</span>
+          <span id="walletBtnText">Connect MetaMask</span>
+        </button>
+        <div class="wallet-info" id="walletInfo" style="display: none">
+          Connected: <span class="wallet-address" id="walletAddress"></span>
+        </div>
       </div>
     </div>
 
