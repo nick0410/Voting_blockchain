@@ -9,8 +9,10 @@
     "moduleResolution": "node",
     "outDir": "./dist",
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "types": ["node"]
   },
-  "include": ["scripts", "test"],
+  "include": ["scripts", "test", "types"],
   "exclude": ["node_modules"]
 }

@@ -9,6 +9,8 @@
     "deploy": "hardhat run scripts/deploy.js",
     "deploy:localhost": "hardhat run scripts/deploy.js --network localhost",
     "node": "hardhat node",
+    "serve": "node server.js",
+    "dev": "concurrently \"npm run node\" \"npm run serve\"",
     "generate-merkle": "node scripts/generateMerkle.js",
     "clean": "hardhat clean",
     "build": "npm run compile"
@@ -25,11 +27,10 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
     "@nomicfoundation/hardhat-ethers": "^3.1.2",
-    "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.6",
     "@types/node": "^22.19.1",
-    "chai": "^6.2.1",
+    "chai": "^4.5.0",
     "ethers": "^6.15.0",
     "hardhat": "^2.17.0",
     "mocha": "^11.7.5",

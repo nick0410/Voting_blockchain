@@ -1,11 +1,13 @@
 import hre from "hardhat";
-const ethers = (hre as any).ethers;
 import { MerkleTree } from "merkletreejs";
 import keccak256 from "keccak256";
 
 async function main() {
   console.log("Deploying Voting Contract...\n");
 
+  // Get ethers from hardhat runtime (available after @nomicfoundation/hardhat-ethers plugin loads)
+  const ethers = (hre as any).ethers;
+  
   // Get signer from Hardhat
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", await deployer.getAddress());
