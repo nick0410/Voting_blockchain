@@ -806,6 +806,49 @@
     const RPC_URL = "http://127.0.0.1:8545";
     let CONTRACT_ADDRESS = localStorage.getItem("votingContractAddress");
 
+    function handleRegistration(event) {
+      event.preventDefault();
+
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      const confirmPassword = document.getElementById('regConfirm').value;
+      const fullName = document.getElementById('regFullName').value;
+
+      if (!email || !password || !fullName) {
+        showError('Please fill in all fields');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showError('Passwords do not match');
+        return;
+      }
+
+      if (password.length < 6) {
+        showError('Password must be at least 6 characters');
+        return;
+      }
+
+      // Save user registration to localStorage
+      const userData = {
+        email,
+        password,
+        fullName,
+        registeredAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem('userRegistration', JSON.stringify(userData));
+      userRegistered = true;
+
+      showSuccess('Registration successful! Please connect your wallet.');
+
+      // Show voting section and hide registration
+      document.getElementById('registrationSection').style.display = 'none';
+      document.getElementById('votingSection').style.display = 'block';
+
+      addLog(`✓ User registered: ${fullName}`);
+    }
+
     async function connectWallet() {
       try {
         const btn = document.getElementById('connectWalletBtn');
@@ -817,11 +860,11 @@
         }
 
         const address = await web3Service.connectMetaMask();
-        
+
         document.getElementById('walletAddress').textContent = address;
         document.getElementById('walletInfo').style.display = 'block';
         document.getElementById('accountAddress').textContent = address;
-        
+
         const balance = await web3Service.getBalance();
         document.getElementById('accountBalance').textContent = balance;
 
