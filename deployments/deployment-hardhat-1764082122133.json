@@ -1,0 +1,33 @@
+{
+  "contractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "deployerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "network": "hardhat",
+  "chainId": 31337,
+  "blockNumber": 1,
+  "timestamp": "2025-11-25T14:48:42.132Z",
+  "candidates": [
+    "Alice",
+    "Bob",
+    "Charlie",
+    "Diana"
+  ],
+  "merkleRoot": "0x47c7cc4ba1e878dcf158de3a62e1ecc53561323743b5e298a37a341f63d0ee87",
+  "whitelistedAddresses": [
+    "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "0x70997970C51812e339D9B73b0245ad59E6f53B97",
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+  ],
+  "voterProofs": {
+    "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": [
+      "0x2e31d62fbf89c67fc505c46e738d3482dee452d5983b9f0bbb956fd3a1418955",
+      "0x8a3552d60a98e0ade765adddad0a2e420ca9b1eef5f326ba7ab860bb4ea72c94"
+    ],
+    "0x70997970C51812e339D9B73b0245ad59E6f53B97": [
+      "0xe9707d0e6171f728f7473c24cc0432a9b07eaaf1efed6a137a4a8c12c79552d9",
+      "0x8a3552d60a98e0ade765adddad0a2e420ca9b1eef5f326ba7ab860bb4ea72c94"
+    ],
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": [
+      "0xed586d2eefbd19f436a0cbec1f3ee3a72808c115809d9e67387a0955d9419bb0"
+    ]
+  }
+}
