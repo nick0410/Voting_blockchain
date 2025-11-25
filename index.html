@@ -1035,6 +1035,26 @@
       }
     }
 
+    function loadVoters() {
+      try {
+        const votersList = JSON.parse(localStorage.getItem('votersList') || '[]');
+        const list = document.getElementById("votersList");
+
+        if (votersList.length === 0) {
+          list.innerHTML = '<li style="color: #999999; padding: 10px 0">No registered voters yet</li>';
+          return;
+        }
+
+        list.innerHTML = votersList
+          .map((v, i) => `<li class="candidate-item"><span class="candidate-name">${i + 1}. ${v.fullName}</span><span style="font-size: 0.8em; color: #FF9933;">${v.email}</span></li>`)
+          .join("");
+
+        addLog(`Loaded ${votersList.length} registered voters`);
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
     async function refreshStats() {
       try {
         if (!web3Service.isConnected) {
