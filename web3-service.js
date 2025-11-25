@@ -31,12 +31,14 @@ class Web3Service {
         throw new Error('MetaMask is not installed. Please install MetaMask extension.');
       }
 
+      console.log('Requesting accounts from MetaMask...');
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
       if (!accounts || accounts.length === 0) {
         throw new Error('No accounts found in MetaMask');
       }
 
-      this.walletAddress = accounts[0];
+      this.walletAddress = accounts[0].toLowerCase();
       this.provider = new ethers.BrowserProvider(window.ethereum);
       this.signer = await this.provider.getSigner();
 
@@ -46,12 +48,13 @@ class Web3Service {
       console.log('✓ MetaMask connected:', {
         address: this.walletAddress,
         chainId: this.networkId,
+        network: network.name,
       });
 
       return this.walletAddress;
     } catch (err) {
       console.error('✗ MetaMask connection failed:', err.message);
-      throw err;
+      throw new Error(`MetaMask connection failed: ${err.message}`);
     }
   }
 
