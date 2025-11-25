@@ -1,6 +1,7 @@
 /**
  * Web3 Service - Ethers.js wrapper for Voting contract interaction
  * Handles contract connection, voting operations, and event listening
+ * Supports both MetaMask and local Hardhat node
  */
 
 class Web3Service {
@@ -10,6 +11,74 @@ class Web3Service {
     this.contract = null;
     this.contractAddress = null;
     this.isConnected = false;
+    this.walletAddress = null;
+    this.networkId = null;
+  }
+
+  /**
+   * Check if MetaMask is available
+   */
+  static isMetaMaskInstalled() {
+    return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
+  }
+
+  /**
+   * Connect to MetaMask wallet
+   */
+  async connectMetaMask() {
+    try {
+      if (!Web3Service.isMetaMaskInstalled()) {
+        throw new Error('MetaMask is not installed. Please install MetaMask extension.');
+      }
+
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found in MetaMask');
+      }
+
+      this.walletAddress = accounts[0];
+      this.provider = new ethers.BrowserProvider(window.ethereum);
+      this.signer = await this.provider.getSigner();
+
+      const network = await this.provider.getNetwork();
+      this.networkId = network.chainId;
+
+      console.log('✓ MetaMask connected:', {
+        address: this.walletAddress,
+        chainId: this.networkId,
+      });
+
+      return this.walletAddress;
+    } catch (err) {
+      console.error('✗ MetaMask connection failed:', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * Listen for MetaMask account changes
+   */
+  onAccountChange(callback) {
+    if (Web3Service.isMetaMaskInstalled()) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+          this.walletAddress = accounts[0];
+          callback(accounts[0]);
+        }
+      });
+    }
+  }
+
+  /**
+   * Listen for MetaMask network changes
+   */
+  onNetworkChange(callback) {
+    if (Web3Service.isMetaMaskInstalled()) {
+      window.ethereum.on('chainChanged', (chainId) => {
+        this.networkId = parseInt(chainId, 16);
+        callback(this.networkId);
+      });
+    }
   }
 
   /**
@@ -17,31 +86,35 @@ class Web3Service {
    * @param {string} rpcUrl - RPC endpoint URL (default: localhost:8545)
    * @param {string} contractAddress - Deployed contract address
    * @param {object} contractABI - Contract ABI JSON
+   * @param {boolean} useMetaMask - Use MetaMask if available
    */
-  async init(rpcUrl = "http://127.0.0.1:8545", contractAddress, contractABI) {
+  async init(rpcUrl = "http://127.0.0.1:8545", contractAddress, contractABI, useMetaMask = true) {
     try {
-      // Connect to provider
-      this.provider = new ethers.JsonRpcProvider(rpcUrl);
-      
-      // Get signer (first account on local node)
-      const accounts = await this.provider.listAccounts();
-      if (accounts.length === 0) {
-        throw new Error("No accounts available. Start Hardhat node with 'npm run node'");
+      // Try to use MetaMask first if available and requested
+      if (useMetaMask && Web3Service.isMetaMaskInstalled()) {
+        await this.connectMetaMask();
+      } else {
+        // Fallback to JSON-RPC provider
+        this.provider = new ethers.JsonRpcProvider(rpcUrl);
+        const accounts = await this.provider.listAccounts();
+        if (accounts.length === 0) {
+          throw new Error("No accounts available. Start Hardhat node with 'npm run node'");
+        }
+        this.signer = await this.provider.getSigner(0);
+        this.walletAddress = await this.signer.getAddress();
       }
-      
-      this.signer = await this.provider.getSigner(0);
-      
+
       // Initialize contract
       this.contractAddress = contractAddress;
       this.contract = new ethers.Contract(contractAddress, contractABI, this.signer);
-      
+
       this.isConnected = true;
       console.log("✓ Web3 connected:", {
         network: (await this.provider.getNetwork()).name,
-        account: await this.signer.getAddress(),
+        account: this.walletAddress,
         contract: contractAddress,
       });
-      
+
       return true;
     } catch (err) {
       console.error("✗ Web3 initialization failed:", err.message);
