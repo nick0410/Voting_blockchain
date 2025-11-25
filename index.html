@@ -838,15 +838,28 @@
       };
 
       localStorage.setItem('userRegistration', JSON.stringify(userData));
+
+      // Add user to voters list
+      let votersList = JSON.parse(localStorage.getItem('votersList') || '[]');
+      if (!votersList.find(v => v.email === email)) {
+        votersList.push({
+          email,
+          fullName,
+          registeredAt: new Date().toISOString(),
+          status: 'registered'
+        });
+        localStorage.setItem('votersList', JSON.stringify(votersList));
+      }
+
       userRegistered = true;
 
-      showSuccess('Registration successful! Please connect your wallet.');
+      showSuccess(`Registration successful, ${fullName}! Please connect your wallet.`);
 
       // Show voting section and hide registration
       document.getElementById('registrationSection').style.display = 'none';
       document.getElementById('votingSection').style.display = 'block';
 
-      addLog(`✓ User registered: ${fullName}`);
+      addLog(`✓ User registered: ${fullName} - Added to voters list (${votersList.length} total)`);
     }
 
     async function connectWallet() {
