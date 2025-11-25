@@ -1030,8 +1030,19 @@
         btn.disabled = true;
         btn.innerHTML = '<div class="spinner"></div> Committing...';
 
-        const result = await web3Service.commitVote(candidateId, secret);
-        
+        // Get Merkle proof for current address
+        const currentAddress = web3Service.walletAddress;
+        const merkleProof = deploymentData?.voterProofs?.[currentAddress] || [];
+
+        if (merkleProof.length === 0) {
+          showError("Your address is not whitelisted. Contact the voting administrator.");
+          btn.disabled = false;
+          btn.textContent = "Step 1: Commit";
+          return;
+        }
+
+        const result = await web3Service.commitVote(candidateId, secret, merkleProof);
+
         committedSecret = secret;
         committedCandidateId = candidateId;
         localStorage.setItem("committedSecret", secret);
