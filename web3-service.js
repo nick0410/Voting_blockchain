@@ -1,6 +1,7 @@
 /**
  * Web3 Service - Ethers.js wrapper for Voting contract interaction
  * Handles contract connection, voting operations, and event listening
+ * Supports both MetaMask and local Hardhat node
  */
 
 class Web3Service {
@@ -10,6 +11,77 @@ class Web3Service {
     this.contract = null;
     this.contractAddress = null;
     this.isConnected = false;
+    this.walletAddress = null;
+    this.networkId = null;
+  }
+
+  /**
+   * Check if MetaMask is available
+   */
+  static isMetaMaskInstalled() {
+    return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
+  }
+
+  /**
+   * Connect to MetaMask wallet
+   */
+  async connectMetaMask() {
+    try {
+      if (!Web3Service.isMetaMaskInstalled()) {
+        throw new Error('MetaMask is not installed. Please install MetaMask extension.');
+      }
+
+      console.log('Requesting accounts from MetaMask...');
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found in MetaMask');
+      }
+
+      this.walletAddress = accounts[0].toLowerCase();
+      this.provider = new ethers.BrowserProvider(window.ethereum);
+      this.signer = await this.provider.getSigner();
+
+      const network = await this.provider.getNetwork();
+      this.networkId = network.chainId;
+
+      console.log('✓ MetaMask connected:', {
+        address: this.walletAddress,
+        chainId: this.networkId,
+        network: network.name,
+      });
+
+      return this.walletAddress;
+    } catch (err) {
+      console.error('✗ MetaMask connection failed:', err.message);
+      throw new Error(`MetaMask connection failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Listen for MetaMask account changes
+   */
+  onAccountChange(callback) {
+    if (Web3Service.isMetaMaskInstalled()) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+          this.walletAddress = accounts[0];
+          callback(accounts[0]);
+        }
+      });
+    }
+  }
+
+  /**
+   * Listen for MetaMask network changes
+   */
+  onNetworkChange(callback) {
+    if (Web3Service.isMetaMaskInstalled()) {
+      window.ethereum.on('chainChanged', (chainId) => {
+        this.networkId = parseInt(chainId, 16);
+        callback(this.networkId);
+      });
+    }
   }
 
   /**
@@ -17,19 +89,23 @@ class Web3Service {
    * @param {string} rpcUrl - RPC endpoint URL (default: localhost:8545)
    * @param {string} contractAddress - Deployed contract address
    * @param {object} contractABI - Contract ABI JSON
+   * @param {boolean} useMetaMask - Use MetaMask if available
    */
-  async init(rpcUrl = "http://127.0.0.1:8545", contractAddress, contractABI) {
+  async init(rpcUrl = "http://127.0.0.1:8545", contractAddress, contractABI, useMetaMask = true) {
     try {
-      // Connect to provider
-      this.provider = new ethers.JsonRpcProvider(rpcUrl);
-      
-      // Get signer (first account on local node)
-      const accounts = await this.provider.listAccounts();
-      if (accounts.length === 0) {
-        throw new Error("No accounts available. Start Hardhat node with 'npm run node'");
+      // Try to use MetaMask first if available and requested
+      if (useMetaMask && Web3Service.isMetaMaskInstalled()) {
+        await this.connectMetaMask();
+      } else {
+        // Fallback to JSON-RPC provider
+        this.provider = new ethers.JsonRpcProvider(rpcUrl);
+        const accounts = await this.provider.listAccounts();
+        if (accounts.length === 0) {
+          throw new Error("No accounts available. Start Hardhat node with 'npm run node'");
+        }
+        this.signer = await this.provider.getSigner(0);
+        this.walletAddress = await this.signer.getAddress();
       }
-      
-      this.signer = await this.provider.getSigner(0);
       
       // Initialize contract
       this.contractAddress = contractAddress;
@@ -38,7 +114,7 @@ class Web3Service {
       this.isConnected = true;
       console.log("✓ Web3 connected:", {
         network: (await this.provider.getNetwork()).name,
-        account: await this.signer.getAddress(),
+        account: this.walletAddress,
         contract: contractAddress,
       });
       
@@ -58,8 +134,8 @@ class Web3Service {
     
     try {
       const [numCandidates, currentPhase, merkleRoot] = await Promise.all([
-        this.contract.numCandidates(),
-        this.contract.currentPhase(),
+        this.contract.getTotalCandidates(),
+        this.contract.getCurrentPhase(),
         this.contract.merkleRoot(),
       ]);
 
@@ -82,15 +158,8 @@ class Web3Service {
     if (!this.contract) throw new Error("Contract not initialized");
     
     try {
-      const numCandidates = await this.contract.numCandidates();
-      const candidates = [];
-      
-      for (let i = 0; i < numCandidates; i++) {
-        const name = await this.contract.candidateNames(i);
-        candidates.push({ id: i, name });
-      }
-      
-      return candidates;
+      const candidates = await this.contract.getAllCandidates();
+      return candidates.map((name, id) => ({ id, name }));
     } catch (err) {
       console.error("Error fetching candidates:", err.message);
       throw err;
@@ -104,19 +173,14 @@ class Web3Service {
     if (!this.contract) throw new Error("Contract not initialized");
     
     try {
-      const candidates = await this.getCandidates();
-      const results = [];
+      const candidates = await this.contract.getAllCandidates();
+      const votesCounts = await this.contract.getAllVotes();
       
-      for (const candidate of candidates) {
-        const votes = await this.contract.votes(candidate.id);
-        results.push({
-          id: candidate.id,
-          name: candidate.name,
-          votes: votes.toString(),
-        });
-      }
-      
-      return results;
+      return candidates.map((name, id) => ({
+        id,
+        name,
+        votes: votesCounts[id].toString(),
+      }));
     } catch (err) {
       console.error("Error fetching results:", err.message);
       throw err;
@@ -124,29 +188,43 @@ class Web3Service {
   }
 
   /**
-   * Submit a vote commitment
+   * Submit a vote commitment with Merkle proof
    * @param {string} candidateId - ID of candidate to vote for
    * @param {string} secret - Random secret (salt) for commit-reveal
+   * @param {array} merkleProof - Merkle proof for the voter address
    */
-  async commitVote(candidateId, secret) {
+  async commitVote(candidateId, secret, merkleProof = []) {
     if (!this.contract) throw new Error("Contract not initialized");
-    
+
     try {
       // Hash: keccak256(candidateId + secret)
       const commitment = ethers.solidityPackedKeccak256(
         ["uint", "string"],
         [candidateId, secret]
       );
-      
-      const tx = await this.contract.commitVote(commitment);
+
+      // Use provided proof or empty array if not available
+      const proof = merkleProof || [];
+
+      const tx = await this.contract.commitVote(commitment, proof);
       const receipt = await tx.wait();
-      
+
       console.log("✓ Vote committed:", { txHash: receipt.hash, commitment });
       return { txHash: receipt.hash, commitment, secret };
     } catch (err) {
       console.error("Error committing vote:", err.message);
       throw err;
     }
+  }
+
+  /**
+   * Get Merkle proof for an address
+   * @param {string} address - Wallet address
+   * @returns {array} Merkle proof
+   */
+  getMerkleProofForAddress(address) {
+    // This will be populated from deployment info
+    return [];
   }
 
   /**
@@ -176,7 +254,7 @@ class Web3Service {
     if (!this.provider) throw new Error("Provider not initialized");
     
     try {
-      const addr = address || (await this.signer.getAddress());
+      const addr = address || this.walletAddress;
       const balance = await this.provider.getBalance(addr);
       return ethers.formatEther(balance) + " ETH";
     } catch (err) {
@@ -192,14 +270,11 @@ class Web3Service {
     if (!this.contract) throw new Error("Contract not initialized");
     
     try {
-      const [whitelisted, submitted] = await Promise.all([
-        this.contract.totalVotersWhitelisted(),
-        this.contract.totalVotesSubmitted(),
-      ]);
-
+      const stats = await this.contract.getVotingStats();
+      
       return {
-        whitelistedVoters: whitelisted.toString(),
-        votesSubmitted: submitted.toString(),
+        whitelistedVoters: stats[0].toString(),
+        votesSubmitted: stats[1].toString(),
       };
     } catch (err) {
       console.error("Error fetching stats:", err.message);
@@ -220,7 +295,7 @@ class Web3Service {
 
     this.contract.on("VoteRevealed", (voter, candidateId, timestamp) => {
       console.log("📢 Event: Vote revealed for candidate", candidateId);
-      window.dispatchEvent(new CustomEvent("voteRevealed", { detail: { voter, candidateId, timestamp } }));
+      window.dispatchEvent(new CustomEvent("voteRevealed", { detail: { voter, candidateId: candidateId.toString(), timestamp } }));
     });
 
     this.contract.on("PhaseChanged", (newPhase, timestamp) => {
