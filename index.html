@@ -882,13 +882,19 @@
         document.getElementById('accountBalance').textContent = balance;
 
         btn.innerHTML = '✓ Connected';
+        addLog('✓ MetaMask wallet connected');
+
+        // Auto-initialize contract after wallet connection
+        setTimeout(() => {
+          initializeWeb3();
+        }, 1000);
+
         setTimeout(() => {
           btn.innerHTML = '<span>🦊</span> <span>Wallet Connected</span>';
           btn.disabled = false;
         }, 2000);
 
         showSuccess('Wallet connected successfully!');
-        addLog('✓ MetaMask wallet connected');
       } catch (err) {
         showError(err.message);
         const btn = document.getElementById('connectWalletBtn');
