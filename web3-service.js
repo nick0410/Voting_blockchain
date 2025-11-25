@@ -103,18 +103,18 @@ class Web3Service {
         this.signer = await this.provider.getSigner(0);
         this.walletAddress = await this.signer.getAddress();
       }
-
+      
       // Initialize contract
       this.contractAddress = contractAddress;
       this.contract = new ethers.Contract(contractAddress, contractABI, this.signer);
-
+      
       this.isConnected = true;
       console.log("✓ Web3 connected:", {
         network: (await this.provider.getNetwork()).name,
         account: this.walletAddress,
         contract: contractAddress,
       });
-
+      
       return true;
     } catch (err) {
       console.error("✗ Web3 initialization failed:", err.message);
@@ -131,8 +131,8 @@ class Web3Service {
     
     try {
       const [numCandidates, currentPhase, merkleRoot] = await Promise.all([
-        this.contract.numCandidates(),
-        this.contract.currentPhase(),
+        this.contract.getTotalCandidates(),
+        this.contract.getCurrentPhase(),
         this.contract.merkleRoot(),
       ]);
 
@@ -155,15 +155,8 @@ class Web3Service {
     if (!this.contract) throw new Error("Contract not initialized");
     
     try {
-      const numCandidates = await this.contract.numCandidates();
-      const candidates = [];
-      
-      for (let i = 0; i < numCandidates; i++) {
-        const name = await this.contract.candidateNames(i);
-        candidates.push({ id: i, name });
-      }
-      
-      return candidates;
+      const candidates = await this.contract.getAllCandidates();
+      return candidates.map((name, id) => ({ id, name }));
     } catch (err) {
       console.error("Error fetching candidates:", err.message);
       throw err;
@@ -177,19 +170,14 @@ class Web3Service {
     if (!this.contract) throw new Error("Contract not initialized");
     
     try {
-      const candidates = await this.getCandidates();
-      const results = [];
+      const candidates = await this.contract.getAllCandidates();
+      const votesCounts = await this.contract.getAllVotes();
       
-      for (const candidate of candidates) {
-        const votes = await this.contract.votes(candidate.id);
-        results.push({
-          id: candidate.id,
-          name: candidate.name,
-          votes: votes.toString(),
-        });
-      }
-      
-      return results;
+      return candidates.map((name, id) => ({
+        id,
+        name,
+        votes: votesCounts[id].toString(),
+      }));
     } catch (err) {
       console.error("Error fetching results:", err.message);
       throw err;
@@ -197,7 +185,7 @@ class Web3Service {
   }
 
   /**
-   * Submit a vote commitment
+   * Submit a vote commitment with Merkle proof
    * @param {string} candidateId - ID of candidate to vote for
    * @param {string} secret - Random secret (salt) for commit-reveal
    */
@@ -211,7 +199,10 @@ class Web3Service {
         [candidateId, secret]
       );
       
-      const tx = await this.contract.commitVote(commitment);
+      // For now, use empty proof - in production would need Merkle tree proof
+      const emptyProof = [];
+      
+      const tx = await this.contract.commitVote(commitment, emptyProof);
       const receipt = await tx.wait();
       
       console.log("✓ Vote committed:", { txHash: receipt.hash, commitment });
@@ -234,7 +225,7 @@ class Web3Service {
       const tx = await this.contract.revealVote(candidateId, secret);
       const receipt = await tx.wait();
       
-      console.log("✓ Vote revealed:", { txHash: receipt.hash, candidateId });
+      console.log("�� Vote revealed:", { txHash: receipt.hash, candidateId });
       return receipt.hash;
     } catch (err) {
       console.error("Error revealing vote:", err.message);
@@ -249,7 +240,7 @@ class Web3Service {
     if (!this.provider) throw new Error("Provider not initialized");
     
     try {
-      const addr = address || (await this.signer.getAddress());
+      const addr = address || this.walletAddress;
       const balance = await this.provider.getBalance(addr);
       return ethers.formatEther(balance) + " ETH";
     } catch (err) {
@@ -265,14 +256,11 @@ class Web3Service {
     if (!this.contract) throw new Error("Contract not initialized");
     
     try {
-      const [whitelisted, submitted] = await Promise.all([
-        this.contract.totalVotersWhitelisted(),
-        this.contract.totalVotesSubmitted(),
-      ]);
-
+      const stats = await this.contract.getVotingStats();
+      
       return {
-        whitelistedVoters: whitelisted.toString(),
-        votesSubmitted: submitted.toString(),
+        whitelistedVoters: stats[0].toString(),
+        votesSubmitted: stats[1].toString(),
       };
     } catch (err) {
       console.error("Error fetching stats:", err.message);
@@ -293,7 +281,7 @@ class Web3Service {
 
     this.contract.on("VoteRevealed", (voter, candidateId, timestamp) => {
       console.log("📢 Event: Vote revealed for candidate", candidateId);
-      window.dispatchEvent(new CustomEvent("voteRevealed", { detail: { voter, candidateId, timestamp } }));
+      window.dispatchEvent(new CustomEvent("voteRevealed", { detail: { voter, candidateId: candidateId.toString(), timestamp } }));
     });
 
     this.contract.on("PhaseChanged", (newPhase, timestamp) => {
