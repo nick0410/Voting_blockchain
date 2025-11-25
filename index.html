@@ -785,6 +785,8 @@
     let web3Service = new Web3Service();
     let committedSecret = null;
     let committedCandidateId = null;
+    let deploymentData = null;
+    let userRegistered = false;
 
     const VOTING_ABI = [
       "function getTotalCandidates() public view returns (uint)",
@@ -794,7 +796,7 @@
       "function votes(uint) public view returns (uint)",
       "function totalVotersWhitelisted() public view returns (uint)",
       "function totalVotesSubmitted() public view returns (uint)",
-      "function commitVote(bytes32 commitment) public",
+      "function commitVote(bytes32 commitment, bytes32[] calldata proof) public",
       "function revealVote(uint candidateId, string memory secret) public",
       "event CommitmentMade(address indexed voter, uint timestamp)",
       "event VoteRevealed(address indexed voter, uint indexed candidateId, uint timestamp)",
