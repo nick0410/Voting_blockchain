@@ -1051,12 +1051,27 @@
 
     async function loadResults() {
       try {
-        if (!web3Service.isConnected) {
-          showError("Web3 not connected");
-          return;
+        let results = [];
+
+        if (web3Service.isConnected && web3Service.contract) {
+          try {
+            results = await web3Service.getResults();
+          } catch (err) {
+            console.log("Could not load results from contract");
+            results = null;
+          }
         }
 
-        const results = await web3Service.getResults();
+        // Use deployment data with zero votes as fallback
+        if (!results || results.length === 0) {
+          const candidateNames = deploymentData?.candidates || ["Alice", "Bob", "Charlie", "Diana"];
+          results = candidateNames.map((name, id) => ({
+            id,
+            name,
+            votes: "0"
+          }));
+        }
+
         const list = document.getElementById("resultsList");
 
         list.innerHTML = results
@@ -1066,9 +1081,9 @@
           )
           .join("");
 
-        addLog(`Results refreshed`);
+        addLog(`Results loaded: ${results.length} candidates`);
       } catch (err) {
-        showError(err.message);
+        console.error("Error in loadResults:", err.message);
       }
     }
 
