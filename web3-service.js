@@ -131,12 +131,12 @@ class Web3Service {
    */
   async getContractDetails() {
     if (!this.contract) throw new Error("Contract not initialized");
-    
+
     try {
       const [numCandidates, currentPhase, merkleRoot] = await Promise.all([
         this.contract.getTotalCandidates(),
         this.contract.getCurrentPhase(),
-        this.contract.merkleRoot(),
+        this.contract.getMerkleRoot ? this.contract.getMerkleRoot() : this.contract.merkleRoot,
       ]);
 
       return {
