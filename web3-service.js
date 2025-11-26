@@ -166,26 +166,30 @@ class Web3Service {
    * Get candidate names
    */
   async getCandidates() {
-    if (!this.contract) throw new Error("Contract not initialized");
+    // Return empty array - fallback will provide data
+    if (!this.contract || !this.isConnected) {
+      return [];
+    }
 
     try {
       let candidates;
       if (this.contract.getAllCandidates) {
         candidates = await this.contract.getAllCandidates();
+        return candidates.map((name, id) => ({ id, name }));
       } else if (this.contract.candidateNames) {
         const totalCandidates = await this.contract.getTotalCandidates();
         candidates = [];
         for (let i = 0; i < totalCandidates; i++) {
           candidates.push(await this.contract.candidateNames(i));
         }
-      } else {
-        throw new Error("Cannot fetch candidates - no suitable method available");
+        return candidates.map((name, id) => ({ id, name }));
       }
-      return candidates.map((name, id) => ({ id, name }));
     } catch (err) {
       console.error("Error fetching candidates:", err.message);
-      throw err;
     }
+
+    // Return empty array to trigger fallback in index.html
+    return [];
   }
 
   /**
