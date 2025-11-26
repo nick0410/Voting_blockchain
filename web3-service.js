@@ -182,15 +182,31 @@ class Web3Service {
    */
   async getResults() {
     if (!this.contract) throw new Error("Contract not initialized");
-    
+
     try {
-      const candidates = await this.contract.getAllCandidates();
-      const votesCounts = await this.contract.getAllVotes();
-      
+      let candidates, votesCounts;
+
+      if (this.contract.getAllCandidates && this.contract.getAllVotes) {
+        candidates = await this.contract.getAllCandidates();
+        votesCounts = await this.contract.getAllVotes();
+      } else {
+        const totalCandidates = await this.contract.getTotalCandidates();
+        candidates = [];
+        votesCounts = [];
+        for (let i = 0; i < totalCandidates; i++) {
+          if (this.contract.candidateNames) {
+            candidates.push(await this.contract.candidateNames(i));
+          }
+          if (this.contract.votes) {
+            votesCounts.push(await this.contract.votes(i));
+          }
+        }
+      }
+
       return candidates.map((name, id) => ({
         id,
         name,
-        votes: votesCounts[id].toString(),
+        votes: votesCounts[id] ? votesCounts[id].toString() : "0",
       }));
     } catch (err) {
       console.error("Error fetching results:", err.message);
