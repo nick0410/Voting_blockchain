@@ -1441,6 +1441,10 @@
         document.getElementById("votesSubmitted").textContent = "0";
         document.getElementById("currentPhase").textContent = "Init";
 
+        // Auto-load candidates and results
+        loadCandidates();
+        loadResults();
+
         addLog(`✓ Contract data loaded: ${numCandidates} candidates, 3 whitelisted voters`);
       }, 500);
 
