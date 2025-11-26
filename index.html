@@ -1036,22 +1036,9 @@
 
     async function loadCandidates() {
       try {
-        let candidates = [];
-
-        if (web3Service.isConnected && web3Service.contract) {
-          try {
-            candidates = await web3Service.getCandidates();
-          } catch (err) {
-            console.log("Could not load candidates from contract, using default");
-            candidates = null;
-          }
-        }
-
-        // Use deployment data if contract call fails
-        if (!candidates || candidates.length === 0) {
-          const candidateNames = deploymentData?.candidates || ["Alice", "Bob", "Charlie", "Diana"];
-          candidates = candidateNames.map((name, id) => ({ id, name }));
-        }
+        // Use deployment data directly (more reliable)
+        const candidateNames = deploymentData?.candidates || ["Alice", "Bob", "Charlie", "Diana"];
+        const candidates = candidateNames.map((name, id) => ({ id, name }));
 
         const select = document.getElementById("candidateSelect");
         const list = document.getElementById("candidatesList");
@@ -1072,7 +1059,7 @@
           })
           .join("");
 
-        addLog(`Loaded ${candidates.length} candidates`);
+        addLog(`Loaded ${candidates.length} candidates from deployment data`);
       } catch (err) {
         console.error("Error in loadCandidates:", err.message);
       }
