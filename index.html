@@ -1432,6 +1432,18 @@
       // Load voters list on page load
       loadVoters();
 
+      // Auto-populate contract and stats from deployment data
+      setTimeout(() => {
+        document.getElementById("contractAddress").textContent = (CONTRACT_ADDRESS || deploymentData?.contractAddress || "0x0").slice(0, 10) + '...';
+        const numCandidates = (deploymentData?.candidates || ["Alice", "Bob", "Charlie", "Diana"]).length;
+        document.getElementById("numCandidates").textContent = numCandidates;
+        document.getElementById("whitelistedVoters").textContent = deploymentData?.whitelistedAddresses?.length || 3;
+        document.getElementById("votesSubmitted").textContent = "0";
+        document.getElementById("currentPhase").textContent = "Init";
+
+        addLog(`✓ Contract data loaded: ${numCandidates} candidates, 3 whitelisted voters`);
+      }, 500);
+
       if (Web3Service.isMetaMaskInstalled()) {
         web3Service.onAccountChange((address) => {
           document.getElementById('walletAddress').textContent = address;
