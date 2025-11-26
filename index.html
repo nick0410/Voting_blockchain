@@ -1230,7 +1230,40 @@
       }, 6000);
     }
 
+    // Initialize with default users for demo
+    function initializeDefaultUsers() {
+      const defaultVoters = [
+        {
+          email: "alice@example.com",
+          fullName: "Alice Johnson",
+          registeredAt: new Date(Date.now() - 3600000).toISOString(),
+          status: "registered"
+        },
+        {
+          email: "bob@example.com",
+          fullName: "Bob Smith",
+          registeredAt: new Date(Date.now() - 7200000).toISOString(),
+          status: "registered"
+        },
+        {
+          email: "charlie@example.com",
+          fullName: "Charlie Brown",
+          registeredAt: new Date(Date.now() - 10800000).toISOString(),
+          status: "registered"
+        }
+      ];
+
+      const existingVoters = JSON.parse(localStorage.getItem('votersList') || '[]');
+      if (existingVoters.length === 0) {
+        localStorage.setItem('votersList', JSON.stringify(defaultVoters));
+        addLog(`✓ Initialized with ${defaultVoters.length} default users`);
+      }
+    }
+
     window.addEventListener("load", async () => {
+      // Initialize default users
+      initializeDefaultUsers();
+
       // Check if user is already registered
       const savedRegistration = localStorage.getItem('userRegistration');
       if (savedRegistration) {
@@ -1242,27 +1275,60 @@
       }
 
       try {
-        // Load deployment data with Merkle proofs
-        const response = await fetch("/deployments/deployment-localhost-1764097615123.json");
-        if (response.ok) {
-          deploymentData = await response.json();
-          CONTRACT_ADDRESS = deploymentData.contractAddress;
-          localStorage.setItem("votingContractAddress", CONTRACT_ADDRESS);
-          console.log("✓ Deployment data loaded", deploymentData);
-        } else {
-          throw new Error("Deployment file not found");
+        // Try to find the latest deployment file
+        const deploymentsResponse = await fetch("/deployments/");
+        if (deploymentsResponse.ok) {
+          const deploymentsList = await deploymentsResponse.json();
+          const deploymentFiles = deploymentsList.files.filter(f => f.startsWith('deployment-') && f.endsWith('.json'));
+          if (deploymentFiles.length > 0) {
+            const latestFile = deploymentFiles.sort().pop();
+            const response = await fetch(`/deployments/${latestFile}`);
+            if (response.ok) {
+              deploymentData = await response.json();
+              CONTRACT_ADDRESS = deploymentData.contractAddress;
+              localStorage.setItem("votingContractAddress", CONTRACT_ADDRESS);
+              console.log("✓ Deployment data loaded from", latestFile, deploymentData);
+            }
+          }
         }
       } catch (err) {
-        console.log("⚠ Using hardcoded contract address");
-        if (!CONTRACT_ADDRESS) {
-          CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-          localStorage.setItem("votingContractAddress", CONTRACT_ADDRESS);
+        console.log("⚠ Could not load deployment list, trying fallback");
+      }
+
+      // Fallback: try hardcoded recent deployment file
+      if (!deploymentData) {
+        try {
+          const response = await fetch("/deployments/deployment-hardhat-1764167061480.json");
+          if (response.ok) {
+            deploymentData = await response.json();
+            CONTRACT_ADDRESS = deploymentData.contractAddress;
+            localStorage.setItem("votingContractAddress", CONTRACT_ADDRESS);
+            console.log("✓ Deployment data loaded", deploymentData);
+          }
+        } catch (err) {
+          console.log("⚠ Using fallback contract address");
         }
-        // Create minimal deployment data
+      }
+
+      // Final fallback
+      if (!CONTRACT_ADDRESS) {
+        CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+        localStorage.setItem("votingContractAddress", CONTRACT_ADDRESS);
+      }
+
+      // Create minimal deployment data if not loaded
+      if (!deploymentData) {
         deploymentData = {
           contractAddress: CONTRACT_ADDRESS,
+          candidates: ["Alice", "Bob", "Charlie", "Diana"],
+          whitelistedAddresses: [
+            "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "0x70997970C51812e339D9B73b0245ad59E6f53B97",
+            "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+          ],
           voterProofs: {},
         };
+        console.log("⚠ Using minimal deployment data");
       }
 
       // Load voters list on page load
