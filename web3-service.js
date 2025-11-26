@@ -196,7 +196,10 @@ class Web3Service {
    * Get current voting results
    */
   async getResults() {
-    if (!this.contract) throw new Error("Contract not initialized");
+    // Return empty array - fallback will provide data
+    if (!this.contract || !this.isConnected) {
+      return [];
+    }
 
     try {
       let candidates, votesCounts;
@@ -204,6 +207,11 @@ class Web3Service {
       if (this.contract.getAllCandidates && this.contract.getAllVotes) {
         candidates = await this.contract.getAllCandidates();
         votesCounts = await this.contract.getAllVotes();
+        return candidates.map((name, id) => ({
+          id,
+          name,
+          votes: votesCounts[id] ? votesCounts[id].toString() : "0",
+        }));
       } else {
         const totalCandidates = await this.contract.getTotalCandidates();
         candidates = [];
@@ -216,17 +224,18 @@ class Web3Service {
             votesCounts.push(await this.contract.votes(i));
           }
         }
+        return candidates.map((name, id) => ({
+          id,
+          name,
+          votes: votesCounts[id] ? votesCounts[id].toString() : "0",
+        }));
       }
-
-      return candidates.map((name, id) => ({
-        id,
-        name,
-        votes: votesCounts[id] ? votesCounts[id].toString() : "0",
-      }));
     } catch (err) {
       console.error("Error fetching results:", err.message);
-      throw err;
     }
+
+    // Return empty array to trigger fallback in index.html
+    return [];
   }
 
   /**
