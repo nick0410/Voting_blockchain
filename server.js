@@ -7,7 +7,8 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = 3000;
+const PORT = process.env.PORT || 5000;
+const BASE_DIR = process.cwd();
 
 const server = http.createServer((req, res) => {
   // Enable CORS
@@ -15,9 +16,13 @@ const server = http.createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
+  // Parse URL without query parameters
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = parsedUrl.pathname;
+
   // Handle directory listing for deployments
-  if (req.url === "/deployments/") {
-    const deploymentsDir = path.join(__dirname, "deployments");
+  if (pathname === "/deployments/") {
+    const deploymentsDir = path.join(BASE_DIR, "deployments");
     fs.readdir(deploymentsDir, (err, files) => {
       if (err) {
         res.writeHead(404, { "Content-Type": "application/json" });
@@ -31,10 +36,20 @@ const server = http.createServer((req, res) => {
   }
 
   // Serve files
-  let filePath = path.join(__dirname, req.url === "/" ? "index.html" : req.url);
+  let filePath = path.join(BASE_DIR, pathname === "/" ? "index.html" : pathname);
+
+  // Prevent directory traversal attacks
+  if (!filePath.startsWith(BASE_DIR)) {
+    res.writeHead(403, { "Content-Type": "text/html" });
+    res.end("<h1>403 - Forbidden</h1>");
+    return;
+  }
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
+      if (pathname === "/" || pathname === "/index.html") {
+        console.error(`Critical: index.html not found at ${filePath}`);
+      }
       res.writeHead(404, { "Content-Type": "text/html" });
       res.end("<h1>404 - File Not Found</h1>");
       return;
