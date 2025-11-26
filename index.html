@@ -991,27 +991,45 @@
 
     async function loadCandidates() {
       try {
-        if (!web3Service.isConnected) {
-          showError("Web3 not connected");
-          return;
+        let candidates = [];
+
+        if (web3Service.isConnected && web3Service.contract) {
+          try {
+            candidates = await web3Service.getCandidates();
+          } catch (err) {
+            console.log("Could not load candidates from contract, using default");
+            candidates = null;
+          }
         }
 
-        const candidates = await web3Service.getCandidates();
+        // Use deployment data if contract call fails
+        if (!candidates || candidates.length === 0) {
+          const candidateNames = deploymentData?.candidates || ["Alice", "Bob", "Charlie", "Diana"];
+          candidates = candidateNames.map((name, id) => ({ id, name }));
+        }
+
         const select = document.getElementById("candidateSelect");
         const list = document.getElementById("candidatesList");
 
         select.innerHTML = '<option value="">-- Choose a candidate --</option>';
         candidates.forEach((c) => {
-          select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+          const votersList = JSON.parse(localStorage.getItem('votersList') || '[]');
+          const voterInfo = votersList.length > c.id ? ` (${votersList[c.id]?.fullName || 'Unknown'})` : '';
+          select.innerHTML += `<option value="${c.id}">${c.name}${voterInfo}</option>`;
         });
 
         list.innerHTML = candidates
-          .map((c) => `<li class="candidate-item"><span class="candidate-name">${c.name}</span></li>`)
+          .map((c) => {
+            const votersList = JSON.parse(localStorage.getItem('votersList') || '[]');
+            const voter = votersList.length > c.id ? votersList[c.id] : null;
+            const voterDisplay = voter ? `<div style="font-size: 0.85em; color: #999; margin-top: 4px;">${voter.fullName}</div>` : '';
+            return `<li class="candidate-item"><span class="candidate-name">${c.name}</span>${voterDisplay}</li>`;
+          })
           .join("");
 
         addLog(`Loaded ${candidates.length} candidates`);
       } catch (err) {
-        showError(err.message);
+        console.error("Error in loadCandidates:", err.message);
       }
     }
 
