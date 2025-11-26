@@ -295,10 +295,18 @@ class Web3Service {
    */
   async getStats() {
     if (!this.contract) throw new Error("Contract not initialized");
-    
+
     try {
-      const stats = await this.contract.getVotingStats();
-      
+      let stats;
+
+      if (this.contract.getVotingStats) {
+        stats = await this.contract.getVotingStats();
+      } else {
+        const whitelisted = this.contract.totalVotersWhitelisted ? await this.contract.totalVotersWhitelisted() : 0;
+        const submitted = this.contract.totalVotesSubmitted ? await this.contract.totalVotesSubmitted() : 0;
+        stats = [whitelisted, submitted, 0];
+      }
+
       return {
         whitelistedVoters: stats[0].toString(),
         votesSubmitted: stats[1].toString(),
