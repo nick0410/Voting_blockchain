@@ -16,8 +16,12 @@ const server = http.createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
+  // Parse URL without query parameters
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = parsedUrl.pathname;
+
   // Handle directory listing for deployments
-  if (req.url === "/deployments/") {
+  if (pathname === "/deployments/") {
     const deploymentsDir = path.join(BASE_DIR, "deployments");
     fs.readdir(deploymentsDir, (err, files) => {
       if (err) {
@@ -32,7 +36,7 @@ const server = http.createServer((req, res) => {
   }
 
   // Serve files
-  let filePath = path.join(BASE_DIR, req.url === "/" ? "index.html" : req.url);
+  let filePath = path.join(BASE_DIR, pathname === "/" ? "index.html" : pathname);
 
   // Prevent directory traversal attacks
   if (!filePath.startsWith(BASE_DIR)) {
@@ -43,7 +47,9 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      console.error(`File not found: ${filePath}`, err.code);
+      if (pathname === "/" || pathname === "/index.html") {
+        console.error(`Critical: index.html not found at ${filePath}`);
+      }
       res.writeHead(404, { "Content-Type": "text/html" });
       res.end("<h1>404 - File Not Found</h1>");
       return;
